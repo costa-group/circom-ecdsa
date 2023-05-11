@@ -40,59 +40,87 @@ template Aux(n, k){
    signal output sum_2;
    signal output carry_2;
    
-   (sum, carry) <== ModSum(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
-   (sum_1, carry_1) <== ModSub(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
-   (sum_2, carry_2) <== ModSubThree(n + 1)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)));
+   //(sum, carry) <== ModSum(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
+   //(sum_1, carry_1) <== ModSub(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
+   //(sum_2, carry_2) <== ModSubThree(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)));
    
    signal output sum_3;
    signal output carry_3;
-   (sum_3, carry_3) <== ModSumThree(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)));
+   //(sum_3, carry_3) <== ModSumThree(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)));
    
 
    signal output sum_4;
    signal output carry_4;
-   (sum_4, carry_4) <== ModSumFour(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)), Bits2Num(n)(Num2Bits(n)(d)));
+   //(sum_4, carry_4) <== ModSumFour(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)), Bits2Num(n)(Num2Bits(n)(d)));
    
    signal output sum_5;
    signal output carry_5;
-   (sum_5, carry_5) <== ModProd(2 * n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
+   //(sum_5, carry_5) <== ModProd(2 * n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
    
    signal output out_1;
    signal output out_2;
    
-   (out_1, out_2) <== Split(n-2, 2)(Bits2Num(n)(Num2Bits(n)(a)));
+   //(out_1, out_2) <== Split(n-2, 2)(Bits2Num(n)(Num2Bits(n)(a)));
    
    signal output out_3;
    signal output out_4;
    signal output out_5;
-   (out_3, out_4, out_5) <== SplitThree(n-2, 1, 1)(Bits2Num(n)(Num2Bits(n)(a)));
+   //(out_3, out_4, out_5) <== SplitThree(n-2, 1, 1)(Bits2Num(n)(Num2Bits(n)(a)));
    
    
    signal aux_a[k];
    signal aux_b[k];
+   signal aux_c[k];
    signal output out6[k+1];
    
    for(var i = 0; i < k; i++){
    	aux_a[i] <== Bits2Num(n)(Num2Bits(n)(a));
    	aux_b[i] <== Bits2Num(n)(Num2Bits(n)(b));
+   	aux_c[i] <== Bits2Num(n)(Num2Bits(n)(c));
    }
    
-   out6 <== BigAdd(n, k)(aux_a, aux_b);
+   //out6 <== BigAdd(n, k)(aux_a, aux_b);
  
    signal output out7[2 * k - 1];
    
-   out7 <== BigMultNoCarry(n, k, k)(aux_a, aux_b);
+   //out7 <== BigMultNoCarry(n, k, k)(aux_a, aux_b);
    
    
    signal output out8[k+1];
-   out8 <== LongToShortNoEndCarry(n, k)(aux_a);
+   //out8 <== LongToShortNoEndCarry(n, k)(aux_a);
    
    signal output out9[2 * k];
-   out9 <== BigMult(n, k)(aux_a, aux_b);
+   //out9 <== BigMult(n, k)(aux_a, aux_b);
    
-   signal output out10 <== BigLessThan(n, k)(aux_a, aux_b);
+   //signal output out10 <== BigLessThan(n, k)(aux_a, aux_b);
    
-   signal output out11 <== BigIsEqual(k)([aux_a, aux_b]);
+   //signal output out11 <== BigIsEqual(k)([aux_a, aux_b]);
+   
+   signal aux_2a[2*k];
+   for(var i = 0; i < k; i++){
+   	aux_2a[i] <== Bits2Num(n)(Num2Bits(n)(a));
+   	aux_2a[k + i] <== Bits2Num(n)(Num2Bits(n)(b));
+   }
+   signal output out12[k+1];
+   signal output out13[k];
+   
+   component bm = BigMod(n, k);
+   //(out12, out13) <== BigMod(n, k)(aux_2a, aux_b);
+   
+   signal output out14[k];
+   signal output out15;
+   //(out14, out15) <== BigSub(n, k)(aux_a, aux_b);
+   
+   //signal output out16[k] <== BigSubModP(n, k)(aux_a, aux_b, aux_c);
+   
+   //signal output out17[k] <== BigMultModP(n, k)(aux_a, aux_b, aux_c);
+   
+   //signal output out18[k] <== BigModInv(n, k)(aux_a, aux_b);
+   
+   signal {maxbit_abs} auxn[2];
+   auxn.maxbit_abs = 2;
+   auxn <== [a, a];
+   CheckCarryToZero(2, 3, 2)(auxn);
 
 }
 
@@ -149,10 +177,27 @@ template ModSubThree(n) {
     signal input {maxbit} b;
     signal input {maxbit} c;
     
-    assert(2 ** n >=  2 ** b.maxbit + 2 ** c.maxbit);
-    
     assert(n >= a.maxbit);
+    assert(n >= b.maxbit);
+    assert(n >= c.maxbit);
     assert(n+2 <= 253);
+    
+    
+    // in this case we can assume that a - b - c + 2**n >= 0
+    if(2 ** n >=  2 ** b.maxbit + 2 ** c.maxbit - 2){
+    
+         // no need of extra checks
+    
+    } else{
+    
+        // if not we check this property
+        component lt_aux = LessEqThan(n + 1);
+        lt_aux.in[0] <== b + c;
+        lt_aux.in[1] <== a + 2 ** n;
+        lt_aux.out === 1;
+    
+    }
+    
     
     signal output {maxbit} out;
     signal output {maxbit, binary} borrow;
@@ -160,12 +205,12 @@ template ModSubThree(n) {
     b_plus_c.maxbit = n + 1;
     b_plus_c <== b + c;
     
-    component lt = LessThanBounded();
+    component lt = LessThan(n + 1);
     lt.in[0] <== UpdateMaxbitTag(n + 1)(a);
     lt.in[1] <== b_plus_c;
     borrow.maxbit = 1;
     borrow <== lt.out;
-    out.maxbit = n;
+    out.maxbit = n; 
     out <== borrow * (1 << n) + a - b_plus_c;
 }
 
@@ -480,7 +525,7 @@ template BigLessThan(n, k){
     component lt[k];
     component eq[k];
     for (var i = 0; i < k; i++) {
-        lt[i] = LessThan(n);
+        lt[i] = LessThanBounded();
         lt[i].in[0] <== UpdateMaxbitTag(n)(a[i]);
         lt[i].in[1] <== UpdateMaxbitTag(n)(b[i]);
         eq[i] = IsEqual();
@@ -537,16 +582,16 @@ template BigIsEqual(k){
     out <== isEqual[k].out;
 }
 
-/*
-
 // leading register of b should be non-zero
 template BigMod(n, k) {
     assert(n <= 126);
-    signal input a[2 * k];
-    signal input b[k];
+    signal  input {maxbit} a[2 * k];
+    signal input {maxbit} b[k];
 
-    signal output div[k + 1];
-    signal output mod[k];
+    signal output {maxbit} div[k + 1];
+    div.maxbit = n;
+    signal output {maxbit} mod[k];
+    mod.maxbit = n;
 
     var longdiv[2][100] = long_div(n, k, k, a, b);
     for (var i = 0; i < k; i++) {
@@ -554,6 +599,7 @@ template BigMod(n, k) {
         mod[i] <-- longdiv[1][i];
     }
     div[k] <-- longdiv[0][k];
+    
     component div_range_checks[k + 1];
     for (var i = 0; i <= k; i++) {
         div_range_checks[i] = Num2Bits(n);
@@ -564,6 +610,7 @@ template BigMod(n, k) {
         mod_range_checks[i] = Num2Bits(n);
         mod_range_checks[i].in <== mod[i];
     }
+    
 
     component mul = BigMult(n, k + 1);
     for (var i = 0; i < k; i++) {
@@ -571,7 +618,12 @@ template BigMod(n, k) {
         mul.b[i] <== b[i];
     }
     mul.a[k] <== div[k];
-    mul.b[k] <== 0;
+    signal {maxbit} aux_0;
+    aux_0.maxbit = n;
+    
+    aux_0 <== 0;
+    
+    mul.b[k] <== aux_0;
 
     component add = BigAdd(n, 2 * k + 2);
     for (var i = 0; i < 2 * k; i++) {
@@ -579,20 +631,20 @@ template BigMod(n, k) {
         if (i < k) {
             add.b[i] <== mod[i];
         } else {
-            add.b[i] <== 0;
+            add.b[i] <== aux_0;
         }
     }
     add.a[2 * k] <== mul.out[2 * k];
     add.a[2 * k + 1] <== mul.out[2 * k + 1];
-    add.b[2 * k] <== 0;
-    add.b[2 * k + 1] <== 0;
+    add.b[2 * k] <== aux_0;
+    add.b[2 * k + 1] <== aux_0;
 
     for (var i = 0; i < 2 * k; i++) {
         add.out[i] === a[i];
     }
     add.out[2 * k] === 0;
     add.out[2 * k + 1] === 0;
-
+    
     component lt = BigLessThan(n, k);
     for (var i = 0; i < k; i++) {
         lt.a[i] <== mod[i];
@@ -601,15 +653,16 @@ template BigMod(n, k) {
     lt.out === 1;
 }
 
+
 // a[i], b[i] in 0... 2**n-1
 // represent a = a[0] + a[1] * 2**n + .. + a[k - 1] * 2**(n * k)
 // assume a >= b
 template BigSub(n, k) {
     assert(n <= 252);
-    signal input a[k];
-    signal input b[k];
-    signal output out[k];
-    signal output underflow;
+    signal input {maxbit} a[k];
+    signal input {maxbit} b[k];
+    signal output {maxbit} out[k];
+    signal output {binary} underflow;
 
     component unit0 = ModSub(n);
     unit0.a <== a[0];
@@ -631,20 +684,27 @@ template BigSub(n, k) {
     underflow <== unit[k - 2].borrow;
 }
 
+
 // calculates (a - b) % p, where a, b < p
 // note: does not assume a >= b
 template BigSubModP(n, k){
     assert(n <= 252);
-    signal input a[k];
-    signal input b[k];
-    signal input p[k];
-    signal output out[k];
+    signal input {maxbit} a[k];
+    signal input {maxbit} b[k];
+    signal input {maxbit} p[k];
+    signal output {maxbit} out[k];
+    
+    assert(a.maxbit <= n);
+    assert(b.maxbit <= n);
+    assert(p.maxbit <= n);
+    out.maxbit = n;
+    
     component sub = BigSub(n, k);
     for (var i = 0; i < k; i++){
         sub.a[i] <== a[i];
         sub.b[i] <== b[i];
     }
-    signal flag;
+    signal {binary} flag;
     flag <== sub.underflow;
     component add = BigAdd(n, k);
     for (var i = 0; i < k; i++){
@@ -658,12 +718,19 @@ template BigSubModP(n, k){
     }
 }
 
+
+
 template BigMultModP(n, k) {
     assert(n <= 252);
-    signal input a[k];
-    signal input b[k];
-    signal input p[k];
-    signal output out[k];
+    signal input {maxbit} a[k];
+    signal input {maxbit} b[k];
+    signal input {maxbit} p[k];
+    signal output {maxbit} out[k];
+    
+    assert(a.maxbit <= n);
+    assert(b.maxbit <= n);
+    assert(p.maxbit <= n);
+    out.maxbit = n;
 
     component big_mult = BigMult(n, k);
     for (var i = 0; i < k; i++) {
@@ -682,11 +749,16 @@ template BigMultModP(n, k) {
     }
 }
 
+
 template BigModInv(n, k) {
     assert(n <= 252);
-    signal input in[k];
-    signal input p[k];
-    signal output out[k];
+    signal input {maxbit} in[k];
+    signal input {maxbit} p[k];
+    signal output {maxbit} out[k];
+    
+    assert(in.maxbit <= n);
+    assert(p.maxbit <= n);
+    out.maxbit = n;
 
     // length k
     var inv[100] = mod_inv(n, k, in, p);
@@ -717,6 +789,7 @@ template BigModInv(n, k) {
     }
 }
 
+
 // in[i] contains values in the range -2^(m-1) to 2^(m-1)
 // constrain that in[] as a big integer is zero
 // each limbs is n bits
@@ -725,9 +798,12 @@ template CheckCarryToZero(n, m, k) {
     
     var EPSILON = 3;
     
-    signal input in[k];
+    signal input {maxbit_abs} in[k];
     
-    signal carry[k];
+    assert(m >= in.maxbit_abs);
+    
+    signal {maxbit_abs} carry[k];
+    carry.maxbit_abs = m - n - 1 + EPSILON;
     component carryRangeChecks[k];
     for (var i = 0; i < k-1; i++){
         carryRangeChecks[i] = Num2Bits(m + EPSILON - n); 
@@ -745,5 +821,4 @@ template CheckCarryToZero(n, m, k) {
     in[k-1] + carry[k-2] === 0;   
 }
 
-*/
-component main = Aux(10, 2);
+component main = Aux(5, 2);
