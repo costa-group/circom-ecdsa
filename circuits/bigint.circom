@@ -25,7 +25,7 @@ template UpdateMaxbitTag(n){
 
 }
 
-template Aux(n){
+template Aux(n, k){
    signal input a;
    signal input b;
    signal input c;
@@ -57,9 +57,42 @@ template Aux(n){
    signal output carry_5;
    (sum_5, carry_5) <== ModProd(2 * n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
    
-   signal output sum_6;
-   signal output carry_6;
-   (sum_6, carry_6) <== Split(n-3, 3)(Bits2Num(n)(Num2Bits(n)(a)));
+   signal output out_1;
+   signal output out_2;
+   
+   (out_1, out_2) <== Split(n-2, 2)(Bits2Num(n)(Num2Bits(n)(a)));
+   
+   signal output out_3;
+   signal output out_4;
+   signal output out_5;
+   (out_3, out_4, out_5) <== SplitThree(n-2, 1, 1)(Bits2Num(n)(Num2Bits(n)(a)));
+   
+   
+   signal aux_a[k];
+   signal aux_b[k];
+   signal output out6[k+1];
+   
+   for(var i = 0; i < k; i++){
+   	aux_a[i] <== Bits2Num(n)(Num2Bits(n)(a));
+   	aux_b[i] <== Bits2Num(n)(Num2Bits(n)(b));
+   }
+   
+   out6 <== BigAdd(n, k)(aux_a, aux_b);
+ 
+   signal output out7[2 * k - 1];
+   
+   out7 <== BigMultNoCarry(n, k, k)(aux_a, aux_b);
+   
+   
+   signal output out8[k+1];
+   out8 <== LongToShortNoEndCarry(n, k)(aux_a);
+   
+   signal output out9[2 * k];
+   out9 <== BigMult(n, k)(aux_a, aux_b);
+   
+   signal output out10 <== BigLessThan(n, k)(aux_a, aux_b);
+   
+   signal output out11 <== BigIsEqual(k)([aux_a, aux_b]);
 
 }
 
@@ -234,10 +267,16 @@ template Split(n, m) {
 // split a n + m + k bit input into three outputs
 template SplitThree(n, m, k) {
     assert(n <= 126);
-    signal input in;
-    signal output small;
-    signal output medium;
-    signal output big;
+    signal input {maxbit} in;
+    signal output {maxbit} small;
+    signal output {maxbit} medium;
+    signal output {maxbit} big;
+    
+    assert(in.maxbit <= n + m + k);
+    small.maxbit = n;
+    medium.maxbit = m;
+    big.maxbit = k;
+    
 
     small <-- in % (1 << n);
     medium <-- (in \ (1 << n)) % (1 << m);
@@ -253,15 +292,18 @@ template SplitThree(n, m, k) {
     in === small + medium * (1 << n) + big * (1 << n + m);
 }
 
-/*
-
 // a[i], b[i] in 0... 2**n-1
 // represent a = a[0] + a[1] * 2**n + .. + a[k - 1] * 2**(n * k)
 template BigAdd(n, k) {
     assert(n <= 252);
-    signal input a[k];
-    signal input b[k];
-    signal output out[k + 1];
+    signal input {maxbit} a[k];
+    signal input {maxbit} b[k];
+    signal output {maxbit} out[k + 1];
+
+    assert(a.maxbit <= n);
+    assert(b.maxbit <= n);
+    
+    out.maxbit = n;
 
     component unit0 = ModSum(n);
     unit0.a <== a[0];
@@ -283,15 +325,22 @@ template BigAdd(n, k) {
     out[k] <== unit[k - 2].carry;
 }
 
+
+
 // a and b have n-bit registers
 // a has ka registers, each with NONNEGATIVE ma-bit values (ma can be > n)
 // b has kb registers, each with NONNEGATIVE mb-bit values (mb can be > n)
 // out has ka + kb - 1 registers, each with (ma + mb + ceil(log(max(ka, kb))))-bit values
-template BigMultNoCarry(n, ma, mb, ka, kb) {
-    assert(ma + mb <= 253);
-    signal input a[ka];
-    signal input b[kb];
-    signal output out[ka + kb - 1];
+template BigMultNoCarry(n, ka, kb) {
+    signal input {maxbit} a[ka];
+    signal input {maxbit} b[kb];
+    signal output {maxbit} out[ka + kb - 1];
+      
+      
+    assert(a.maxbit <= n);
+    assert(b.maxbit <= n);
+    out.maxbit = a.maxbit + b.maxbit + log_ceil(max2(ka, kb));
+    assert(out.maxbit <= 253);
 
     var prod_val[ka + kb - 1];
     for (var i = 0; i < ka + kb - 1; i++) {
@@ -305,6 +354,7 @@ template BigMultNoCarry(n, ma, mb, ka, kb) {
     for (var i = 0; i < ka + kb - 1; i++) {
         out[i] <-- prod_val[i];
     }
+    
 
     var a_poly[ka + kb - 1];
     var b_poly[ka + kb - 1];
@@ -323,6 +373,8 @@ template BigMultNoCarry(n, ma, mb, ka, kb) {
             b_poly[i] = b_poly[i] + b[j] * (i ** j);
         }
     }
+    
+    // Con lo de clusterizar deberia ir bien
     for (var i = 0; i < ka + kb - 1; i++) {
         out_poly[i] === a_poly[i] * b_poly[i];
     }
@@ -333,8 +385,11 @@ template BigMultNoCarry(n, ma, mb, ka, kb) {
 // out[i] contains shorts
 template LongToShortNoEndCarry(n, k) {
     assert(n <= 126);
-    signal input in[k];
-    signal output out[k+1];
+    signal input {maxbit} in[k];
+    signal output {maxbit} out[k+1];
+    
+    assert(in.maxbit <= 3 * n);
+    out.maxbit = n;
 
     var split[k][3];
     for (var i = 0; i < k; i++) {
@@ -370,7 +425,9 @@ template LongToShortNoEndCarry(n, k) {
         outRangeChecks[i].in <== out[i];
     }
 
-    signal runningCarry[k];
+    signal {maxbit} runningCarry[k];
+    runningCarry.maxbit = n + log_ceil(k);
+    
     component runningCarryRangeChecks[k];
     runningCarry[0] <-- (in[0] - out[0]) / (1 << n);
     runningCarryRangeChecks[0] = Num2Bits(n + log_ceil(k));
@@ -385,12 +442,17 @@ template LongToShortNoEndCarry(n, k) {
     runningCarry[k-1] === out[k];
 }
 
-template BigMult(n, k) {
-    signal input a[k];
-    signal input b[k];
-    signal output out[2 * k];
 
-    component mult = BigMultNoCarry(n, n, n, k, k);
+template BigMult(n, k) {
+    signal input {maxbit} a[k];
+    signal input {maxbit} b[k];
+    signal output {maxbit} out[2 * k];
+    
+    assert(a.maxbit <= n);
+    assert(b.maxbit <= n);
+    out.maxbit = n;
+
+    component mult = BigMultNoCarry(n, k, k);
     for (var i = 0; i < k; i++) {
         mult.a[i] <== a[i];
         mult.b[i] <== b[i];
@@ -406,17 +468,21 @@ template BigMult(n, k) {
     }
 }
 
+
 template BigLessThan(n, k){
-    signal input a[k];
-    signal input b[k];
-    signal output out;
+    signal input {maxbit} a[k];
+    signal input {maxbit} b[k];
+    signal output {binary} out;
+    
+    assert(a.maxbit <= n);
+    assert(b.maxbit <= n);
 
     component lt[k];
     component eq[k];
     for (var i = 0; i < k; i++) {
         lt[i] = LessThan(n);
-        lt[i].in[0] <== a[i];
-        lt[i].in[1] <== b[i];
+        lt[i].in[0] <== UpdateMaxbitTag(n)(a[i]);
+        lt[i].in[1] <== UpdateMaxbitTag(n)(b[i]);
         eq[i] = IsEqual();
         eq[i].in[0] <== a[i];
         eq[i].in[1] <== b[i];
@@ -452,9 +518,10 @@ template BigLessThan(n, k){
      out <== ors[0].out;
 }
 
+
 template BigIsEqual(k){
     signal input in[2][k];
-    signal output out;
+    signal output {binary} out;
     component isEqual[k+1];
     var sum = 0;
     for(var i = 0; i < k; i++){
@@ -469,6 +536,8 @@ template BigIsEqual(k){
     isEqual[k].in[1] <== k;
     out <== isEqual[k].out;
 }
+
+/*
 
 // leading register of b should be non-zero
 template BigMod(n, k) {
@@ -677,4 +746,4 @@ template CheckCarryToZero(n, m, k) {
 }
 
 */
-component main = Aux(30);
+component main = Aux(10, 2);
