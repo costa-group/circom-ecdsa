@@ -1,95 +1,199 @@
-pragma circom 2.0.2;
+pragma circom 2.1.5;
 
-include "../node_modules/circomlib/circuits/comparators.circom";
-include "../node_modules/circomlib/circuits/bitify.circom";
-include "../node_modules/circomlib/circuits/gates.circom";
+include "circuits/comparators.circom";
+include "circuits/bitify.circom";
+include "circuits/gates.circom";
+
+
 
 include "bigint_func.circom";
 
+
+function max2(a, b){
+   return a>b ?  a : b;
+}
+
+template UpdateMaxbitTag(n){
+   signal input {maxbit} in;
+   signal output {maxbit} out;
+   
+   assert(n >= in.maxbit);
+   
+   out.maxbit = n;
+   out <== in;
+
+
+}
+
+template Aux(n){
+   signal input a;
+   signal input b;
+   signal input c;
+   signal input d;
+   
+   signal output sum;
+   signal output carry;
+   
+   signal output sum_1;
+   signal output carry_1;
+   
+   signal output sum_2;
+   signal output carry_2;
+   
+   (sum, carry) <== ModSum(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
+   (sum_1, carry_1) <== ModSub(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
+   (sum_2, carry_2) <== ModSubThree(n + 1)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)));
+   
+   signal output sum_3;
+   signal output carry_3;
+   (sum_3, carry_3) <== ModSumThree(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)));
+   
+
+   signal output sum_4;
+   signal output carry_4;
+   (sum_4, carry_4) <== ModSumFour(n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)), Bits2Num(n)(Num2Bits(n)(c)), Bits2Num(n)(Num2Bits(n)(d)));
+   
+   signal output sum_5;
+   signal output carry_5;
+   (sum_5, carry_5) <== ModProd(2 * n)(Bits2Num(n)(Num2Bits(n)(a)), Bits2Num(n)(Num2Bits(n)(b)));
+   
+   signal output sum_6;
+   signal output carry_6;
+   (sum_6, carry_6) <== Split(n-3, 3)(Bits2Num(n)(Num2Bits(n)(a)));
+
+}
+
+
+
 // addition mod 2**n with carry bit
 template ModSum(n) {
+    
+    signal input {maxbit} a;
+    signal input {maxbit} b;
+    signal output {maxbit} sum;
+    signal output {maxbit, binary} carry;
+    
+    assert(n >= a.maxbit);
+    assert(n >= b.maxbit);
     assert(n <= 252);
-    signal input a;
-    signal input b;
-    signal output sum;
-    signal output carry;
 
     component n2b = Num2Bits(n + 1);
     n2b.in <== a + b;
+    carry.maxbit = 1;
     carry <== n2b.out[n];
+    sum.maxbit = n;
     sum <== a + b - carry * (1 << n);
 }
 
+
 // a - b
 template ModSub(n) {
+
+    signal input {maxbit} a;
+    signal input {maxbit} b;
+    signal output {maxbit} out;
+    signal output {maxbit, binary} borrow;
+    
+    assert(n >= a.maxbit);
+    assert(n >= b.maxbit);
     assert(n <= 252);
-    signal input a;
-    signal input b;
-    signal output out;
-    signal output borrow;
-    component lt = LessThan(n);
-    lt.in[0] <== a;
-    lt.in[1] <== b;
+    
+    component lt = LessThanBounded();
+    lt.in[0] <== UpdateMaxbitTag(n)(a);
+    lt.in[1] <==  UpdateMaxbitTag(n)(b);
+    
+    borrow.maxbit = 1;
     borrow <== lt.out;
+    out.maxbit = n;
     out <== borrow * (1 << n) + a - b;
 }
 
 // a - b - c
 // assume a - b - c + 2**n >= 0
 template ModSubThree(n) {
-    assert(n + 2 <= 253);
-    signal input a;
-    signal input b;
-    signal input c;
-    assert(a - b - c + (1 << n) >= 0);
-    signal output out;
-    signal output borrow;
-    signal b_plus_c;
+
+    signal input {maxbit} a;
+    signal input {maxbit} b;
+    signal input {maxbit} c;
+    
+    assert(2 ** n >=  2 ** b.maxbit + 2 ** c.maxbit);
+    
+    assert(n >= a.maxbit);
+    assert(n+2 <= 253);
+    
+    signal output {maxbit} out;
+    signal output {maxbit, binary} borrow;
+    signal {maxbit} b_plus_c;
+    b_plus_c.maxbit = n + 1;
     b_plus_c <== b + c;
-    component lt = LessThan(n + 1);
-    lt.in[0] <== a;
+    
+    component lt = LessThanBounded();
+    lt.in[0] <== UpdateMaxbitTag(n + 1)(a);
     lt.in[1] <== b_plus_c;
+    borrow.maxbit = 1;
     borrow <== lt.out;
+    out.maxbit = n;
     out <== borrow * (1 << n) + a - b_plus_c;
 }
 
 template ModSumThree(n) {
-    assert(n + 2 <= 253);
-    signal input a;
-    signal input b;
-    signal input c;
-    signal output sum;
-    signal output carry;
+
+    signal input {maxbit} a;
+    signal input {maxbit} b;
+    signal input {maxbit} c;
+    signal output {maxbit} sum;
+    signal output {maxbit} carry;
+    
+    assert(n >= a.maxbit);
+    assert(n >= b.maxbit);
+    assert(n >= c.maxbit);
+    assert(n+2 <= 253);
 
     component n2b = Num2Bits(n + 2);
     n2b.in <== a + b + c;
+    carry.maxbit = 2;
     carry <== n2b.out[n] + 2 * n2b.out[n + 1];
+    sum.maxbit = n;
     sum <== a + b + c - carry * (1 << n);
 }
 
 template ModSumFour(n) {
-    assert(n + 2 <= 253);
-    signal input a;
-    signal input b;
-    signal input c;
-    signal input d;
-    signal output sum;
-    signal output carry;
+
+    signal input {maxbit} a;
+    signal input {maxbit} b;
+    signal input {maxbit} c;
+    signal input {maxbit} d;
+    signal output {maxbit} sum;
+    signal output {maxbit} carry;
+    
+    assert(n >= a.maxbit);
+    assert(n >= b.maxbit);
+    assert(n >= c.maxbit);
+    assert(n >= d.maxbit);
+    assert(n+2 <= 253);
 
     component n2b = Num2Bits(n + 2);
     n2b.in <== a + b + c + d;
+    carry.maxbit = 2;
     carry <== n2b.out[n] + 2 * n2b.out[n + 1];
+    sum.maxbit = n;
     sum <== a + b + c + d - carry * (1 << n);
 }
+
 
 // product mod 2**n with carry
 template ModProd(n) {
     assert(n <= 126);
-    signal input a;
-    signal input b;
-    signal output prod;
-    signal output carry;
-
+    signal input {maxbit} a;
+    signal input {maxbit} b;
+    signal output {maxbit} prod;
+    signal output {maxbit} carry;
+    
+    prod.maxbit = n;
+    carry.maxbit = n;
+    
+    assert(2 * n >= a.maxbit + b.maxbit);
+    
     component n2b = Num2Bits(2 * n);
     n2b.in <== a * b;
 
@@ -104,12 +208,17 @@ template ModProd(n) {
     carry <== b2n2.out;
 }
 
+
 // split a n + m bit input into two outputs
 template Split(n, m) {
     assert(n <= 126);
-    signal input in;
-    signal output small;
-    signal output big;
+    signal input {maxbit} in;
+    signal output {maxbit} small;
+    signal output {maxbit} big;
+    
+    assert(in.maxbit <= n + m);
+    small.maxbit = n;
+    big.maxbit = m;
 
     small <-- in % (1 << n);
     big <-- in \ (1 << n);
@@ -143,6 +252,8 @@ template SplitThree(n, m, k) {
 
     in === small + medium * (1 << n) + big * (1 << n + m);
 }
+
+/*
 
 // a[i], b[i] in 0... 2**n-1
 // represent a = a[0] + a[1] * 2**n + .. + a[k - 1] * 2**(n * k)
@@ -564,3 +675,6 @@ template CheckCarryToZero(n, m, k) {
     }
     in[k-1] + carry[k-2] === 0;   
 }
+
+*/
+component main = Aux(30);
