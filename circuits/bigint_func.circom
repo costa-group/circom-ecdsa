@@ -15,12 +15,17 @@ function div_ceil(m, n) {
     return ret;
 }
 
+
+
+
+// TODO: it returns the number of bits necessary to represent n, not the log_ceil of the number
 function log_ceil(n) {
    var n_temp = n;
    for (var i = 0; i < 254; i++) {
-       if (n_temp == 0) {
+       if (n_temp == 0 || n_temp == 1) {
           return i;
        }
+       
        n_temp = n_temp \ 2;
    }
    return 254;
