@@ -75,6 +75,7 @@ template ModSub(n) {
 
 // a - b - c
 // assume a - b - c + 2**n >= 0
+// INCORRECT
 template ModSubThree(n) {
 
     signal input {maxbit} a;
@@ -124,7 +125,7 @@ template ModSubThree(n) {
     out <== borrow * (1 << n) + a - b_plus_c;
 }
 
-template ModSumThree(n) {
+template ModSumThree(n) { 
 
     signal input {maxbit} a;
     signal input {maxbit} b;
@@ -136,13 +137,23 @@ template ModSumThree(n) {
     assert(n >= b.maxbit);
     assert(n >= c.maxbit);
     assert(n+2 <= 253);
-
-    component n2b = Num2Bits(n + 2);
-    n2b.in <== a + b + c;
-    carry.maxbit = 2;
-    carry <== n2b.out[n] + 2 * n2b.out[n + 1];
-    sum.maxbit = n;
-    sum <== a + b + c - carry * (1 << n);
+    
+    if (n == 1){
+        component n2b = Num2Bits(2);       
+    	n2b.in <== a + b + c;
+    	sum.maxbit = 1;
+    	carry.maxbit = 1;
+    	sum <== n2b.out[0];
+    	carry <== n2b.out[1];
+    } else{
+        component n2b = Num2Bits(n + 2);
+        n2b.in <== a + b + c; 
+        carry.maxbit = 2;
+        carry <== n2b.out[n] + 2 * n2b.out[n + 1];
+        sum.maxbit = n;
+        sum <== a + b + c - carry * (1 << n); 
+    }
+                                            
 }
 
 template ModSumFour(n) {
@@ -249,11 +260,13 @@ template SplitThree(n, m, k) {
 
 // a[i], b[i] in 0... 2**n-1
 // represent a = a[0] + a[1] * 2**n + .. + a[k - 1] * 2**(n * k)
+
+// INCORRECT
 template BigAdd(n, k) {
     assert(n <= 252);
-    signal input {maxbit} a[k];
-    signal input {maxbit} b[k];
-    signal output {maxbit} out[k + 1];
+    signal input {maxbit} a[k];// [1, 1]
+    signal input {maxbit} b[k];// [1, 1]
+    signal output {maxbit} out[k + 1]; // [1, 1, 0] is the expected result
 
     assert(a.maxbit <= n);
     assert(b.maxbit <= n);
@@ -261,21 +274,21 @@ template BigAdd(n, k) {
     out.maxbit = n;
 
     component unit0 = ModSum(n);
-    unit0.a <== a[0];
-    unit0.b <== b[0];
-    out[0] <== unit0.sum;
+    unit0.a <== a[0]; // 1
+    unit0.b <== b[0]; // 1
+    out[0] <== unit0.sum; // 0
 
     component unit[k - 1];
-    for (var i = 1; i < k; i++) {
+    for (var i = 1; i < k; i++) { 
         unit[i - 1] = ModSumThree(n);
-        unit[i - 1].a <== a[i];
+        unit[i - 1].a <== a[i]; 
         unit[i - 1].b <== b[i];
         if (i == 1) {
             unit[i - 1].c <== unit0.carry;
         } else {
             unit[i - 1].c <== unit[i - 2].carry;
         }
-        out[i] <== unit[i - 1].sum;
+        out[i] <== unit[i - 1].sum; 
     }
     out[k] <== unit[k - 2].carry;
 }
@@ -294,13 +307,14 @@ template BigMultNoCarry(n, ma, mb, ka, kb) {
     signal input {maxbit} a[ka];
     signal input {maxbit} b[kb];
     signal output {maxbit} out[ka + kb - 1];
-    
 
       
       
     assert(a.maxbit <= ma);
     assert(b.maxbit <= mb);
     out.maxbit = log_ceil((2**ma - 1) * (2**mb - 1) * min2(ka, kb));
+    log((2**ma - 1) * (2**mb - 1) * min2(ka, kb));
+    log(out.maxbit);
     assert(out.maxbit <= 253);
 
     var prod_val[ka + kb - 1];

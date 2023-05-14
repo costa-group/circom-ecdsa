@@ -22,7 +22,7 @@ function div_ceil(m, n) {
 function log_ceil(n) {
    var n_temp = n;
    for (var i = 0; i < 254; i++) {
-       if (n_temp == 0 || n_temp == 1) {
+       if (n_temp == 0) {
           return i;
        }
        
