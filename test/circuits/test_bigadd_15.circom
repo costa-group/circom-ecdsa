@@ -18,4 +18,4 @@ template A(m, k){
 }
 
 // TODO: false assert, check if we have detected a bug
-component main {public [a, b]} = A(1, 5);
+component main {public [a, b]} = A(150, 2);

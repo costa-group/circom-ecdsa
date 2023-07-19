@@ -17,5 +17,5 @@ template A(m, k){
 
 }
 
-component main {public [a, b]} = A(2, 3);
+component main {public [a, b]} = A(1, 2);
 

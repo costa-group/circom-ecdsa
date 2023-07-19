@@ -7,6 +7,7 @@ include "circuits/gates.circom";
 
 
 include "bigint_func.circom";
+include "circuits/tags-managing.circom";
 
 
 function max2(a, b){
@@ -25,6 +26,8 @@ template UpdateMaxbitTag(n){
    
    out.maxbit = n;
    out <== in;
+   
+   spec_postcondition in == out;
 
 
 }
@@ -48,6 +51,8 @@ template ModSum(n) {
     carry <== n2b.out[n];
     sum.maxbit = n;
     sum <== a + b - carry * (1 << n);
+    
+    spec_postcondition (a + b - carry * (1 << n)) == sum;  
 }
 
 
@@ -71,6 +76,8 @@ template ModSub(n) {
     borrow <== lt.out;
     out.maxbit = n;
     out <== borrow * (1 << n) + a - b;
+    
+    spec_postcondition a - b + borrow * (1 << n) == out;  
 }
 
 // a - b - c
@@ -123,6 +130,8 @@ template ModSubThree(n) {
     borrow <== lt.out;
     out.maxbit = n; 
     out <== borrow * (1 << n) + a - b_plus_c;
+    
+    spec_postcondition a - b - c + borrow * (1 << n) == out;  
 }
 
 template ModSumThree(n) { 
@@ -153,6 +162,8 @@ template ModSumThree(n) {
         sum.maxbit = n;
         sum <== a + b + c - carry * (1 << n); 
     }
+    
+    spec_postcondition a + b + c -carry * (1 << n) == sum;  
                                             
 }
 
@@ -177,6 +188,10 @@ template ModSumFour(n) {
     carry <== n2b.out[n] + 2 * n2b.out[n + 1];
     sum.maxbit = n;
     sum <== a + b + c + d - carry * (1 << n);
+    
+    spec_postcondition a + b + c + d - carry * (1 << n) == sum;  
+    
+    
 }
 
 
@@ -205,6 +220,8 @@ template ModProd(n) {
     }
     prod <== b2n1.out;
     carry <== b2n2.out;
+    
+    spec_postcondition a * b - carry * (1 << n) == prod;
 }
 
 
@@ -228,6 +245,8 @@ template Split(n, m) {
     n2b_big.in <== big;
 
     in === small + big * (1 << n);
+    
+    spec_postcondition small + big * (1 << n) == in;
 }
 
 // split a n + m + k bit input into three outputs
@@ -256,6 +275,8 @@ template SplitThree(n, m, k) {
     n2b_big.in <== big;
 
     in === small + medium * (1 << n) + big * (1 << n + m);
+    
+    spec_postcondition in == small + medium * (1 << n) + big * (1 << n + m);
 }
 
 // a[i], b[i] in 0... 2**n-1
@@ -291,6 +312,26 @@ template BigAdd(n, k) {
         out[i] <== unit[i - 1].sum; 
     }
     out[k] <== unit[k - 2].carry;
+    
+   // specification:
+   
+   var sum_a = 0;
+   var sum_b = 0;
+   var sum_out = 0;
+   
+   var e = 1;
+   var exp = (1 << n);
+   
+   for (var i = 0; i < k; i++){
+       sum_a = sum_a + a[i] * e;
+       sum_b = sum_b + b[i] * e;
+       sum_out = sum_out + out[i] * e;
+       e = e * exp; 
+   } 
+   
+   sum_out = sum_out + out[k] * e;
+   
+   spec_postcondition sum_out == (sum_a + sum_b);
 }
 
 
@@ -313,8 +354,6 @@ template BigMultNoCarry(n, ma, mb, ka, kb) {
     assert(a.maxbit <= ma);
     assert(b.maxbit <= mb);
     out.maxbit = log_ceil((2**ma - 1) * (2**mb - 1) * min2(ka, kb));
-    log((2**ma - 1) * (2**mb - 1) * min2(ka, kb));
-    log(out.maxbit);
     assert(out.maxbit <= 253);
 
     var prod_val[ka + kb - 1];
@@ -327,7 +366,7 @@ template BigMultNoCarry(n, ma, mb, ka, kb) {
         }
     }
     for (var i = 0; i < ka + kb - 1; i++) {
-        out[i] <-- prod_val[i];
+        out[i] <-- prod_val[i];       
     }
     
 
@@ -352,7 +391,43 @@ template BigMultNoCarry(n, ma, mb, ka, kb) {
     for (var i = 0; i < ka + kb - 1; i++) {
         out_poly[i] === a_poly[i] * b_poly[i];
     }
+    
+    // specification
+    var sum_a = 0;
+    var sum_b = 0;
+    
+       
+    var e = 1;
+    var exp = (1 << ma);
+    
+    for (var i = 0; i < ka ; i++){
+        sum_a = sum_a + e * a[i];
+        e = exp * e;    
+    }
+    
+    e = 1;
+    exp = (1 << mb);
+    
+    for (var i = 0; i < kb ; i++){
+        sum_b = sum_b + e * b[i];
+        e = exp * e;    
+    }
+    
+    var sum_out = 0;
+    e = 1;
+    exp = (1 << n);
+    
+    for (var i = 0; i < ka + kb - 1 ; i++){
+        sum_out = sum_out + e * out[i];
+        e = exp * e;    
+    }
+   
+    spec_postcondition sum_a * sum_b == sum_out;
+    
+    
 }
+
+
 
 
 // in[i] contains longs
@@ -379,18 +454,22 @@ template LongToShortNoEndCarry(n, k) {
     if (k > 1) {
         var sumAndCarry[2] = SplitFn(split[0][1] + split[1][0], n, n);
         out[1] <-- sumAndCarry[0];
+        log(out[1]);
         carry[1] = sumAndCarry[1];
     }
     if (k == 2) {
 	out[2] <-- split[1][1] + split[0][2] + carry[1];
+	log(out[2]);
     }
     if (k > 2) {
         for (var i = 2; i < k; i++) {
             var sumAndCarry[2] = SplitFn(split[i][0] + split[i-1][1] + split[i-2][2] + carry[i-1], n, n);
             out[i] <-- sumAndCarry[0];
+            log(out[i]);
             carry[i] = sumAndCarry[1];
         }
         out[k] <-- split[k-1][1] + split[k-2][2] + carry[k-1];
+        log(out[k]);
     }
 
     component outRangeChecks[k+1];
@@ -414,6 +493,25 @@ template LongToShortNoEndCarry(n, k) {
         runningCarry[i] * (1 << n) === in[i] - out[i] + runningCarry[i-1];
     }
     runningCarry[k-1] === out[k];
+    
+    // specification:
+   
+    var sum_in = 0;
+    var sum_out = 0;
+    
+       
+    var e = 1;
+    var exp = (1 << n);
+    
+    for (var i = 0; i < k ; i++){
+        sum_in = sum_in + e * in[i];
+        sum_out = sum_out + e * out[i];
+        e = exp * e;    
+    }
+    
+    sum_out = sum_out + e * out[k];
+   
+    spec_postcondition sum_in == sum_out;
 }
 
 
@@ -440,6 +538,33 @@ template BigMult(n, k) {
     for (var i = 0; i < 2 * k; i++) {
         out[i] <== longshort.out[i];
     }
+    
+    
+    
+    // specification
+    var sum_a = 0;
+    var sum_b = 0;
+    
+       
+    var e = 1;
+    var exp = (1 << n);
+    
+    for (var i = 0; i < k ; i++){
+        sum_a = sum_a + e * a[i];
+        sum_b = sum_b + e * b[i];
+        e = exp * e;    
+    }
+    
+    var sum_out = 0;
+    e = 1;
+    
+    for (var i = 0; i < 2 * k ; i++){
+        sum_out = sum_out + e * out[i];
+        e = exp * e;    
+    }
+   
+    spec_postcondition sum_a * sum_b == sum_out;
+    
 }
 
 
@@ -490,6 +615,23 @@ template BigLessThan(n, k){
         }
      }
      out <== ors[0].out;
+     
+   // specification:
+   
+   var sum_a = 0;
+   var sum_b = 0;
+   
+   var e = 1;
+   var exp = 1 << n;
+   
+   for (var i = 0; i < k; i++){
+       sum_a = sum_a + a[i] * e;
+       sum_b = sum_b + b[i] * e;
+       e = e * exp; 
+   } 
+   
+   
+   spec_postcondition out == (sum_a < sum_b);
 }
 
 
@@ -509,7 +651,21 @@ template BigIsEqual(k){
     isEqual[k].in[0] <== sum;
     isEqual[k].in[1] <== k;
     out <== isEqual[k].out;
+    
+    // specification:
+   
+    var check_all = 1;
+   
+    for (var i = 0; i < k; i++){
+       
+        check_all = check_all && (in[0][i] == in[1][i]);
+    } 
+   
+   
+    spec_postcondition out == check_all;
 }
+
+// TODO
 
 // leading register of b should be non-zero
 template BigMod(n, k) {
@@ -611,6 +767,26 @@ template BigSub(n, k) {
         out[i] <== unit[i - 1].out;
     }
     underflow <== unit[k - 2].borrow;
+    
+   // specification:
+   
+   var sum_a = 0;
+   var sum_b = 0;
+   var sum_out = 0;
+   
+   var e = 1;
+   var exp = 1 << n;
+   
+   for (var i = 0; i < k; i++){
+       sum_a = sum_a + a[i] * e;
+       sum_b = sum_b + b[i] * e;
+       sum_out = sum_out + out[i] * e;
+       e = e * exp; 
+   } 
+   
+    
+   
+   spec_postcondition sum_out == sum_a - sum_b + e * underflow;
 }
 
 
@@ -749,4 +925,5 @@ template CheckCarryToZero(n, m, k) {
     }
     in[k-1] + carry[k-2] === 0;   
 }
+
 
